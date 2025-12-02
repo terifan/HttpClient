@@ -393,7 +393,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 		URL url = assambleURL();
 
-		mLogger.info(() -> "Opening connection %s %s".formatted(mMethod, url));
+		mLogger.info(() -> String.format("Opening connection %s %s", mMethod, url));
 
 		HttpURLConnection conn = (HttpURLConnection)url.openConnection(createProxyInstance());
 		conn.setRequestMethod(mMethod.name());
@@ -491,7 +491,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 		if (contentType != null)
 		{
-			mLogger.info("\twith content type \"%s\"".formatted(contentType));
+			mLogger.info(String.format("\twith content type \"%s\"", contentType));
 
 			aConnection.setRequestProperty("Content-Type", contentType);
 		}
@@ -540,7 +540,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 	protected HttpResponse buildResponse(HttpURLConnection aConnection) throws IOException
 	{
-		mLogger.info("Receiving respose %d \"%s\"".formatted(aConnection.getResponseCode(), Objects.toString(aConnection.getResponseMessage(), "")));
+		mLogger.info(String.format("Receiving respose %d \"%s\"", aConnection.getResponseCode(), Objects.toString(aConnection.getResponseMessage(), "")));
 
 		InputStream in;
 
@@ -575,14 +575,14 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 			if (mOutput != null)
 			{
-				mLogger.info(() -> "%s".formatted("\tstreaming response to output stream"));
+				mLogger.info(() -> String.format("%s", "\tstreaming response to output stream"));
 
 				length = transfer(in, mOutput, tc);
 				response.setContentProduced(true);
 			}
 			else
 			{
-				mLogger.info(() -> "%s".formatted("\tloading response to memory"));
+				mLogger.info(() -> String.format("%s", "\tloading response to memory"));
 
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				length = transfer(in, baos, tc);
@@ -591,7 +591,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 			response.mContentLength = length;
 
-			mLogger.info(() -> "\tfinishing transer of %d bytes in %dms".formatted(length, System.currentTimeMillis() - startTime));
+			mLogger.info(() -> String.format("\tfinishing transer of %d bytes in %dms", length, System.currentTimeMillis() - startTime));
 		}
 		else
 		{
@@ -603,7 +603,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 			case HttpURLConnection.HTTP_MOVED_TEMP:
 			case HttpURLConnection.HTTP_MOVED_PERM:
 			case HttpURLConnection.HTTP_SEE_OTHER:
-				mLogger.info(() -> "\tsetting redirection to \"%s\"".formatted(aConnection.getHeaderField("Location")));
+				mLogger.info(() -> String.format("\tsetting redirection to \"%s\"", aConnection.getHeaderField("Location")));
 				response.setRedirect(aConnection.getHeaderField("Location"));
 				break;
 		}
@@ -663,7 +663,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 				if (!skip)
 				{
-					mLogger.info(() -> "%s".formatted("\twith cookie \"" + entry.getKey() + "\""));
+					mLogger.info(() -> String.format("%s", "\twith cookie \"" + entry.getKey() + "\""));
 
 					cookieString.append(entry.getKey() + "=" + values[0]);
 				}
