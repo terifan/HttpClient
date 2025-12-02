@@ -1,4 +1,4 @@
-package org.terifan.net.http;
+package org.terifan.httpclient;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.function.Supplier;
+import java.util.logging.Logger;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -53,6 +55,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 	protected boolean mFixedLengthStreaming;
 	protected int mChunkSize;
 	protected PrintStream mLog;
+	protected Logger mLogger;
 
 
 	public HttpRequest()
@@ -69,6 +72,28 @@ public abstract class HttpRequest<E extends HttpRequest>
 	public E setLog(PrintStream aLog)
 	{
 		mLog = aLog;
+
+		mLogger = new Logger("", "")
+		{
+			@Override
+			public void info(String aMsg)
+			{
+				mLog.println(aMsg);
+			}
+			@Override
+			public void info(Supplier<String> aMsg)
+			{
+				mLog.println(aMsg.get());
+			}
+		};
+
+		return (E)this;
+	}
+
+
+	public E setLog(Logger aLog)
+	{
+		mLogger = aLog;
 		return (E)this;
 	}
 
@@ -237,8 +262,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 	 * Sets the output stream content is written to. If this method is used then getContent method of HttpResponse class will throw an
 	 * exception if called. Note: The output stream isn't closed.
 	 *
-	 * @param aOutput
-	 *   an output stream written to, not closed by this implementation.
+	 * @param aOutput an output stream written to, not closed by this implementation.
 	 */
 	public E setOutput(OutputStream aOutput)
 	{
@@ -304,9 +328,8 @@ public abstract class HttpRequest<E extends HttpRequest>
 	/**
 	 * Enables or disables the global hostname/certificate verifier.
 	 *
-	 * @param aState
-	 *   if false registers a HostnameVerifier that accept all host names, if true removes the installed HostnameVerifier or does
-	 *   nothing if no HostnameVerifier has been installed.
+	 * @param aState if false registers a HostnameVerifier that accept all host names, if true removes the installed HostnameVerifier or
+	 * does nothing if no HostnameVerifier has been installed.
 	 */
 	public static synchronized void setValidateTLSCertificateEnabled(boolean aState)
 	{
@@ -320,11 +343,26 @@ public abstract class HttpRequest<E extends HttpRequest>
 		{
 			try
 			{
-				TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
-					public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-					public void checkClientTrusted(X509Certificate[] certs, String authType) { }
-					public void checkServerTrusted(X509Certificate[] certs, String authType) { }
-				} };
+				TrustManager[] trustAllCerts = new TrustManager[]
+				{
+					new X509TrustManager()
+					{
+						public java.security.cert.X509Certificate[] getAcceptedIssuers()
+						{
+							return null;
+						}
+
+
+						public void checkClientTrusted(X509Certificate[] certs, String authType)
+						{
+						}
+
+
+						public void checkServerTrusted(X509Certificate[] certs, String authType)
+						{
+						}
+					}
+				};
 
 				SSLContext sc = SSLContext.getInstance("SSL");
 				sc.init(null, trustAllCerts, new SecureRandom());
@@ -355,7 +393,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 		URL url = assambleURL();
 
-		log("Opening connection %s %s", mMethod, url);
+		mLogger.info(() -> "Opening connection %s %s".formatted(mMethod, url));
 
 		HttpURLConnection conn = (HttpURLConnection)url.openConnection(createProxyInstance());
 		conn.setRequestMethod(mMethod.name());
@@ -420,7 +458,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 	{
 		if (mLoginName != null && mPassword != null || mToken != null)
 		{
-			log("%s", "\twith basic authorization");
+			mLogger.info(() -> "\twith basic authorization");
 
 			if (mToken != null)
 			{
@@ -453,7 +491,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 		if (contentType != null)
 		{
-			log("\twith content type \"%s\"", contentType);
+			mLogger.info("\twith content type \"%s\"".formatted(contentType));
 
 			aConnection.setRequestProperty("Content-Type", contentType);
 		}
@@ -476,7 +514,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 			first = true;
 		}
 
-		for (Entry<String,String> entry : mParameters.entrySet())
+		for (Entry<String, String> entry : mParameters.entrySet())
 		{
 			if (!first)
 			{
@@ -502,7 +540,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 	protected HttpResponse buildResponse(HttpURLConnection aConnection) throws IOException
 	{
-		log("Receiving respose %d \"%s\"", aConnection.getResponseCode(), Objects.toString(aConnection.getResponseMessage(),""));
+		mLogger.info("Receiving respose %d \"%s\"".formatted(aConnection.getResponseCode(), Objects.toString(aConnection.getResponseMessage(), "")));
 
 		InputStream in;
 
@@ -537,14 +575,14 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 			if (mOutput != null)
 			{
-				log("%s", "\tstreaming response to output stream");
+				mLogger.info(() -> "%s".formatted("\tstreaming response to output stream"));
 
 				length = transfer(in, mOutput, tc);
 				response.setContentProduced(true);
 			}
 			else
 			{
-				log("%s", "\tloading response to memory");
+				mLogger.info(() -> "%s".formatted("\tloading response to memory"));
 
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				length = transfer(in, baos, tc);
@@ -553,11 +591,11 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 			response.mContentLength = length;
 
-			log("\tfinishing transer of %d bytes in %dms", length, System.currentTimeMillis()-startTime);
+			mLogger.info(() -> "\tfinishing transer of %d bytes in %dms".formatted(length, System.currentTimeMillis() - startTime));
 		}
 		else
 		{
-			log("%s", "\tfinishing response with no body");
+			mLogger.info("\tfinishing response with no body");
 		}
 
 		switch (response.getResponseCode())
@@ -565,7 +603,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 			case HttpURLConnection.HTTP_MOVED_TEMP:
 			case HttpURLConnection.HTTP_MOVED_PERM:
 			case HttpURLConnection.HTTP_SEE_OTHER:
-				log("\tsetting redirection to \"%s\"", aConnection.getHeaderField("Location"));
+				mLogger.info(() -> "\tsetting redirection to \"%s\"".formatted(aConnection.getHeaderField("Location")));
 				response.setRedirect(aConnection.getHeaderField("Location"));
 				break;
 		}
@@ -606,7 +644,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 						if (key.equals("domain"))
 						{
-							if (!("."+mURL.getHost()).endsWith(param))
+							if (!("." + mURL.getHost()).endsWith(param))
 							{
 //								System.out.println("host missmatch: url: " + mURL.getHost() + ", param: " + param);
 								skip = true;
@@ -625,7 +663,7 @@ public abstract class HttpRequest<E extends HttpRequest>
 
 				if (!skip)
 				{
-					log("%s", "\twith cookie \"" + entry.getKey() + "\"");
+					mLogger.info(() -> "%s".formatted("\twith cookie \"" + entry.getKey() + "\""));
 
 					cookieString.append(entry.getKey() + "=" + values[0]);
 				}
@@ -671,14 +709,5 @@ public abstract class HttpRequest<E extends HttpRequest>
 	protected interface TransferCallback
 	{
 		void report(int aByteCount);
-	}
-
-
-	protected void log(String aFormat, Object... aParams)
-	{
-		if (mLog != null)
-		{
-			mLog.printf(aFormat + "%n", aParams);
-		}
 	}
 }

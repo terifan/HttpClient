@@ -1,8 +1,9 @@
-package org.terifan.net.http;
+package org.terifan.httpclient;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -122,7 +123,17 @@ public class HttpResponse
 	}
 
 
-	public <T> T to(Function<byte[], T> aFunction)
+	public <T> T onError(Function<byte[], T> aFunction)
+	{
+		if (mContent == null || mContent.length == 0)
+		{
+			return null;
+		}
+		return (T)aFunction.apply(mContent);
+	}
+
+
+	public <T> T onSuccess(Function<byte[], T> aFunction)
 	{
 		if (mContent == null || mContent.length == 0)
 		{

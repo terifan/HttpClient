@@ -1,4 +1,4 @@
-package org.terifan.net.http;
+package org.terifan.httpclient;
 
 public interface TransferListener
 {
