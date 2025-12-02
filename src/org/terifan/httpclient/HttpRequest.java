@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -66,6 +67,9 @@ public abstract class HttpRequest<E extends HttpRequest>
 		mConnectTimeOut = 5 * 60 * 1000;
 		mReadTimeOut = 5 * 60 * 1000;
 		mChunkSize = 8192;
+
+		mLogger = Logger.getAnonymousLogger();
+		mLogger.setLevel(Level.OFF);
 	}
 
 
